@@ -109,10 +109,13 @@
 
         .factor-item {
             margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #eee;
         }
 
         .factor-item:last-child {
             margin-bottom: 0;
+            border-bottom: none;
         }
 
         .factor-header {
@@ -133,6 +136,34 @@
             color: var(--primary-color);
             font-size: 1.1em;
             font-family: system-ui;
+        }
+
+        .factor-explanation {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 12px;
+            line-height: 1.4;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .overall-explanation {
+            margin-top: 24px;
+            padding: 16px;
+            background: #e8f8f5;
+            border-radius: var(--border-radius);
+            font-size: 0.95em;
+            line-height: 1.5;
+            color: #2c3e50;
+        }
+
+        .overall-explanation h3 {
+            color: var(--primary-color);
+            margin: 0 0 8px 0;
+            font-size: 1em;
+            font-weight: 600;
         }
 
         .progress-bar {
@@ -297,6 +328,10 @@
                 <div class="score-number" id="score">--</div>
                 <div class="score-label">Sustainability Score</div>
             </div>
+            <div class="overall-explanation" id="overall-explanation">
+                <h3>Overall Assessment</h3>
+                <div id="overall-explanation-text"></div>
+            </div>
         </div>
 
         <div class="card factors">
@@ -308,6 +343,7 @@
                 <div class="progress-bar">
                     <div class="progress-fill" id="materials-progress"></div>
                 </div>
+                <div class="factor-explanation" id="materials-explanation"></div>
             </div>
 
             <div class="factor-item">
@@ -318,6 +354,7 @@
                 <div class="progress-bar">
                     <div class="progress-fill" id="manufacturing-progress"></div>
                 </div>
+                <div class="factor-explanation" id="manufacturing-explanation"></div>
             </div>
 
             <div class="factor-item">
@@ -328,6 +365,7 @@
                 <div class="progress-bar">
                     <div class="progress-fill" id="carbon-progress"></div>
                 </div>
+                <div class="factor-explanation" id="carbon-explanation"></div>
             </div>
 
             <div class="factor-item">
@@ -338,6 +376,7 @@
                 <div class="progress-bar">
                     <div class="progress-fill" id="water-progress"></div>
                 </div>
+                <div class="factor-explanation" id="water-explanation"></div>
             </div>
         </div>
 

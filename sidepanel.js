@@ -47,18 +47,25 @@ document.addEventListener('DOMContentLoaded', function() {
         scoreElement.textContent = Math.round(data.score);
 
         // Update factor scores and progress bars
-        updateFactor('materials', data.materials);
-        updateFactor('manufacturing', data.manufacturing);
-        updateFactor('carbon', data.carbonFootprint);
-        updateFactor('water', data.waterUsage);
+        updateFactor('materials', data.materials, data.explanations.materials);
+        updateFactor('manufacturing', data.manufacturing, data.explanations.manufacturing);
+        updateFactor('carbon', data.carbonFootprint, data.explanations.carbonFootprint);
+        updateFactor('water', data.waterUsage, data.explanations.waterUsage);
+
+        // Update overall explanation
+        const overallExplanationText = document.getElementById('overall-explanation-text');
+        if (overallExplanationText && data.explanations.overall) {
+            overallExplanationText.textContent = data.explanations.overall;
+        }
 
         showContent();
     }
 
     // Helper function to update a single factor's score and progress bar
-    function updateFactor(factorId, score) {
+    function updateFactor(factorId, score, explanation) {
         const scoreElement = document.getElementById(`${factorId}-score`);
         const progressElement = document.getElementById(`${factorId}-progress`);
+        const explanationElement = document.getElementById(`${factorId}-explanation`);
         
         if (scoreElement && progressElement) {
             const roundedScore = Math.round(score);
@@ -81,6 +88,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     progressElement.style.backgroundColor = '#e74c3c'; // Red
                 }
             });
+
+            // Update explanation if available
+            if (explanationElement && explanation) {
+                explanationElement.textContent = explanation;
+            }
         }
     }
 

@@ -135,11 +135,24 @@ const WATER_INDICATORS = [
     { indicator: 'organic farming', weight: 15, category: 'farming' }
 ];
 
-// Store the last analyzed URL to detect product changes
+// Store the last analyzed URL and debounce timer
 let lastAnalyzedUrl = '';
 let lastAnalyzedTitle = '';
-let analysisAttempts = 0;
-const MAX_ATTEMPTS = 5;
+let debounceTimer = null;
+const DEBOUNCE_DELAY = 1000; // 1 second delay
+
+// Function to check if we should re-analyze
+function shouldReanalyze(currentUrl, currentTitle) {
+    // Don't re-analyze if URL and title haven't changed
+    if (currentUrl === lastAnalyzedUrl && currentTitle === lastAnalyzedTitle) {
+        return false;
+    }
+    
+    // Update last analyzed values
+    lastAnalyzedUrl = currentUrl;
+    lastAnalyzedTitle = currentTitle;
+    return true;
+}
 
 // Function to detect the current e-commerce platform
 function detectPlatform() {
@@ -187,107 +200,55 @@ async function getChatGPTAnalysis(productInfo) {
     try {
         updateAnalysisStep('Preparing sustainability analysis...');
         
-        const prompt = `As a sustainability expert specializing in fashion and textiles, conduct a detailed sustainability analysis of this clothing item. Be decisive in your scoring - if you find clear evidence of sustainable or unsustainable practices, reflect this strongly in the scores.
+        const prompt = `As a sustainability expert specializing in fashion and textiles, provide a concise sustainability analysis of this clothing item. Be direct and use simple language.
 
 Product: ${productInfo.title}
 Description: ${productInfo.description}
 Materials: ${productInfo.materials}
 
-Analyze and score each category from 0-100, using these clear guidelines:
+Analyze and score each category from 0-100. For each score, provide a ONE-SENTENCE explanation focusing on the most important factor.
 
-0-20: VERY UNSUSTAINABLE
-- Primarily synthetic materials (polyester, nylon, acrylic)
-- Fast fashion indicators
-- No eco-certifications
-- Clear environmental harm
+Scoring Guidelines:
+0-20: Very Unsustainable (e.g., pure synthetic materials, clear environmental harm)
+21-40: Unsustainable (e.g., conventional materials, no eco-initiatives)
+41-60: Mixed Impact (e.g., blend of sustainable and unsustainable elements)
+61-80: Sustainable (e.g., eco-friendly materials, good practices)
+81-100: Highly Sustainable (e.g., organic materials, excellent practices)
 
-21-40: UNSUSTAINABLE
-- Conventional cotton or mixed synthetics
-- Limited sustainability information
-- Standard mass production
-- No clear eco-initiatives
+Key Scoring Factors:
+1. Materials (35%):
+- Organic/recycled: +30-40
+- Eco-friendly: +20-30
+- Synthetic: -20-30
 
-41-60: NEUTRAL (Only use if truly ambiguous)
-- Mixed materials with both pros and cons
-- Some sustainable practices but significant issues
-- Incomplete sustainability information
+2. Manufacturing (30%):
+- Local/certified: +20-30
+- Standard: -10-20
+- Fast fashion: -20-30
 
-61-80: SUSTAINABLE
-- Mostly eco-friendly materials
-- Some certifications
-- Clear sustainability initiatives
-- Good production practices
+3. Carbon Footprint (20%):
+- Low impact: +20-30
+- High impact: -20-30
 
-81-100: HIGHLY SUSTAINABLE
-- Organic/recycled materials
-- Multiple eco-certifications
-- Exceptional sustainability practices
-- Industry-leading initiatives
-
-For each category, evaluate decisively:
-
-1. Materials Score (0-100)
-Key Factors:
-- Organic/recycled materials: +30-40 points
-- Eco-friendly materials (hemp, tencel): +20-30 points
-- Conventional natural materials: +10-20 points
-- Synthetic materials: -20-30 points
-- Mixed synthetic blends: -10-20 points
-- Certifications (GOTS, recycled): +10-20 points each
-
-2. Manufacturing Score (0-100)
-Key Factors:
-- Local production: +20-30 points
-- Fair trade certified: +20-30 points
-- Transparent supply chain: +10-20 points
-- Standard mass production: -10-20 points
-- Overseas fast fashion: -20-30 points
-- Ethical certifications: +10-20 points each
-
-3. Carbon Footprint Score (0-100)
-Key Factors:
-- Carbon neutral certified: +30-40 points
-- Renewable energy use: +20-30 points
-- Local production: +20-30 points
-- Long-distance shipping: -20-30 points
-- High energy production: -20-30 points
-- Offset programs: +10-20 points
-
-4. Water Usage Score (0-100)
-Key Factors:
-- Water recycling systems: +30-40 points
-- Low-water materials: +20-30 points
-- Eco-friendly dyes: +20-30 points
-- High water usage: -20-30 points
-- Chemical-intensive processes: -20-30 points
-- Water certifications: +10-20 points
-
-Important Scoring Rules:
-1. If you find clear evidence of sustainable practices, score above 80 in relevant categories
-2. If you find clear evidence of unsustainable practices, score below 40 in relevant categories
-3. Only use middle range scores (41-60) when truly uncertain
-4. Consider the presence of specific eco-certifications as strong positive evidence
-5. Consider synthetic materials and fast fashion indicators as strong negative evidence
-
-Calculate the final weighted score:
-- Materials: 35% (primary environmental impact)
-- Manufacturing: 30% (production impact)
-- Carbon Footprint: 20% (emissions impact)
-- Water Usage: 15% (resource impact)
+4. Water Usage (15%):
+- Water efficient: +20-30
+- Water intensive: -20-30
 
 Format your response as JSON like this:
 {
     "score": number,
     "materials": number,
-    "materials_explanation": "Detailed analysis with specific materials breakdown and clear justification for high/low score",
+    "materials_explanation": "One clear sentence about materials impact",
     "manufacturing": number,
-    "manufacturing_explanation": "Specific production details and certification analysis",
+    "manufacturing_explanation": "One clear sentence about production methods",
     "carbonFootprint": number,
-    "carbonFootprint_explanation": "Clear emissions analysis with specific factors",
+    "carbonFootprint_explanation": "One clear sentence about emissions impact",
     "waterUsage": number,
-    "waterUsage_explanation": "Detailed water impact analysis with specific processes",
-    "overall_explanation": "Clear summary of why the product scored high or low, with specific evidence"
-}`;
+    "waterUsage_explanation": "One clear sentence about water impact",
+    "overall_explanation": "Two sentences maximum summarizing key sustainability aspects"
+}
+
+Keep all explanations short and focused on the most important factors.`;
 
         updateAnalysisStep('Analyzing product sustainability...');
         
@@ -421,11 +382,12 @@ Format your response as JSON like this:
     }
 }
 
-// Function to analyze the page
+// Function to analyze the page with debouncing
 async function analyzePage() {
     try {
-        updateAnalysisStep('Detecting platform...');
+        const currentUrl = window.location.href;
         const platform = detectPlatform();
+        
         if (!platform) {
             console.log('No supported platform detected');
             chrome.runtime.sendMessage({
@@ -435,7 +397,7 @@ async function analyzePage() {
             return null;
         }
 
-        updateAnalysisStep('Extracting product information...');
+        // Get current product info
         const productInfo = extractProductInfo(platform);
         if (!productInfo) {
             console.log('No product detected');
@@ -443,6 +405,12 @@ async function analyzePage() {
                 type: 'PRODUCT_DATA',
                 data: null
             });
+            return null;
+        }
+
+        // Check if we should re-analyze
+        if (!shouldReanalyze(currentUrl, productInfo.title)) {
+            console.log('Skipping analysis - same product');
             return null;
         }
 
@@ -465,11 +433,60 @@ async function analyzePage() {
     }
 }
 
+// Debounced function to handle page changes
+function handlePageChange() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        analyzePage();
+    }, DEBOUNCE_DELAY);
+}
+
 // Listen for messages from the side panel
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'ANALYZE_PAGE') {
-        analyzePage();
+        handlePageChange();
         sendResponse({ success: true });
     }
     return true;
-}); 
+});
+
+// Set up observers for page changes
+let lastUrl = window.location.href;
+
+// URL change observer
+new MutationObserver(() => {
+    const currentUrl = window.location.href;
+    if (currentUrl !== lastUrl) {
+        lastUrl = currentUrl;
+        handlePageChange();
+    }
+}).observe(document, { subtree: true, childList: true });
+
+// Product content change observer
+const productObserver = new MutationObserver(() => {
+    handlePageChange();
+});
+
+// Start observing with more specific targeting
+function setupProductObserver() {
+    const platform = detectPlatform();
+    if (!platform || !SUPPORTED_SITES[platform]) return;
+
+    const selectors = SUPPORTED_SITES[platform];
+    const targets = [
+        document.querySelector(selectors.productTitleSelector),
+        document.querySelector(selectors.descriptionSelector),
+        document.querySelector(selectors.materialSelector)
+    ].filter(Boolean);
+
+    targets.forEach(target => {
+        productObserver.observe(target, {
+            childList: true,
+            characterData: true,
+            subtree: true
+        });
+    });
+}
+
+// Initial setup
+setTimeout(setupProductObserver, 1000); 
