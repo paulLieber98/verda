@@ -1,19 +1,19 @@
 // Configuration for supported e-commerce sites
 const SUPPORTED_SITES = {
     'amazon': {
-        productTitleSelector: '#productTitle, #title, .product-title-word-break',
-        descriptionSelector: '#feature-bullets, #productDescription, #detailBullets_feature_div, .product-description-text',
-        materialSelector: '#productDetails_techSpec_section_1, #detailBullets_feature_div, .product-facts-table, #productDetails_db_sections, .fabric-type'
+        productTitleSelector: '#productTitle, #title, .product-title-word-break, #titleSection',
+        descriptionSelector: '#feature-bullets, #productDescription, #detailBullets_feature_div, .product-description-text, #productOverview_feature_div',
+        materialSelector: '#productDetails_techSpec_section_1, #detailBullets_feature_div, .product-facts-table, #productDetails_db_sections, .fabric-type, #productOverview_feature_div, #technicalSpecifications_feature_div'
     },
     'hm': {
-        productTitleSelector: '.product-item-headline',
-        descriptionSelector: '.pdp-description-text',
-        materialSelector: '.pdp-description-list, .product-composition-list'
+        productTitleSelector: '.product-item-headline, h1.item-heading, .product-input-label',
+        descriptionSelector: '.pdp-description-text, .description-text, .product-description',
+        materialSelector: '.pdp-description-list, .product-composition-list, .product-composition, .product-detail-information, .product-materials'
     },
     'zara': {
-        productTitleSelector: '.product-detail-info h1',
-        descriptionSelector: '.product-detail-description',
-        materialSelector: '.product-detail-info .composition-list'
+        productTitleSelector: '.product-detail-info h1, .product-name, .product-title',
+        descriptionSelector: '.product-detail-description, .product-description, .description',
+        materialSelector: '.product-detail-info .composition-list, .product-composition, .composition'
     },
     // Add more e-commerce sites as needed
 };
@@ -154,37 +154,100 @@ function shouldReanalyze(currentUrl, currentTitle) {
     return true;
 }
 
-// Function to detect the current e-commerce platform
+// Function to detect the current e-commerce platform with better URL handling
 function detectPlatform() {
-    const hostname = window.location.hostname;
-    if (hostname.includes('amazon')) return 'amazon';
-    if (hostname.includes('hm')) return 'hm';
-    if (hostname.includes('zara')) return 'zara';
+    const hostname = window.location.hostname.toLowerCase();
+    const pathname = window.location.pathname.toLowerCase();
+    
+    // Amazon detection
+    if (hostname.includes('amazon')) {
+        // Only detect on product pages
+        if (pathname.includes('/dp/') || pathname.includes('/gp/product/') || pathname.includes('/product/')) {
+            return 'amazon';
+        }
+    }
+    
+    // H&M detection
+    if (hostname.includes('hm') || hostname.includes('h&m') || hostname.includes('hm.com')) {
+        // Only detect on product pages
+        if (pathname.includes('/products/') || pathname.includes('/product/') || pathname.match(/\d+\.html/)) {
+            return 'hm';
+        }
+    }
+    
+    // Zara detection
+    if (hostname.includes('zara')) {
+        // Only detect on product pages
+        if (pathname.includes('/product/') || pathname.match(/\d+\/\d+/)) {
+            return 'zara';
+        }
+    }
+    
     return null;
 }
 
-// Function to extract product information
+// Function to extract product information with retry logic
 function extractProductInfo(platform) {
     try {
         const selectors = SUPPORTED_SITES[platform];
         if (!selectors) return null;
 
-        const title = document.querySelector(selectors.productTitleSelector)?.textContent?.trim();
-        const description = document.querySelector(selectors.descriptionSelector)?.textContent?.trim();
-        const materials = document.querySelector(selectors.materialSelector)?.textContent?.trim();
+        // Try multiple times with a delay
+        const maxRetries = 5;
+        let retryCount = 0;
 
-        if (!title) return null;
+        const tryExtract = () => {
+            const title = findElement(selectors.productTitleSelector);
+            const description = findElement(selectors.descriptionSelector);
+            const materials = findElement(selectors.materialSelector);
 
-        return {
-            title: title || 'Unknown Product',
-            description: description || '',
-            materials: materials || '',
-            url: window.location.href
+            if (!title && retryCount < maxRetries) {
+                retryCount++;
+                return new Promise(resolve => setTimeout(() => resolve(tryExtract()), 1000));
+            }
+
+            return {
+                title: title || 'Unknown Product',
+                description: description || '',
+                materials: materials || '',
+                url: window.location.href
+            };
         };
+
+        return tryExtract();
     } catch (error) {
         console.error('Error extracting product info:', error);
         return null;
     }
+}
+
+// Helper function to find elements with retry
+function findElement(selectors) {
+    const elements = selectors.split(',').map(s => s.trim());
+    for (const selector of elements) {
+        const element = document.querySelector(selector);
+        if (element && element.textContent) {
+            const text = element.textContent.trim();
+            if (text.length > 0) return text;
+        }
+    }
+    return null;
+}
+
+// Function to check if we're on a product page
+function isProductPage() {
+    const platform = detectPlatform();
+    if (!platform) return false;
+
+    const selectors = SUPPORTED_SITES[platform];
+    if (!selectors) return false;
+
+    // Check if any product elements exist
+    const hasTitle = document.querySelector(selectors.productTitleSelector);
+    const hasDescription = document.querySelector(selectors.descriptionSelector);
+    const hasMaterials = document.querySelector(selectors.materialSelector);
+
+    return hasTitle || hasDescription || hasMaterials;
 }
 
 // Function to send analysis step update
@@ -382,14 +445,14 @@ Keep all explanations short and focused on the most important factors.`;
     }
 }
 
-// Function to analyze the page with debouncing
+// Modified analyzePage function with better error handling
 async function analyzePage() {
     try {
         const currentUrl = window.location.href;
         const platform = detectPlatform();
         
-        if (!platform) {
-            console.log('No supported platform detected');
+        if (!platform || !isProductPage()) {
+            console.log('No supported product page detected');
             chrome.runtime.sendMessage({
                 type: 'PRODUCT_DATA',
                 data: null
@@ -397,10 +460,10 @@ async function analyzePage() {
             return null;
         }
 
-        // Get current product info
-        const productInfo = extractProductInfo(platform);
+        // Get current product info with retries
+        const productInfo = await extractProductInfo(platform);
         if (!productInfo) {
-            console.log('No product detected');
+            console.log('No product detected after retries');
             chrome.runtime.sendMessage({
                 type: 'PRODUCT_DATA',
                 data: null
@@ -416,12 +479,14 @@ async function analyzePage() {
 
         updateAnalysisStep('Starting sustainability analysis...');
         const sustainabilityData = await getChatGPTAnalysis(productInfo);
-        console.log('Sustainability data:', sustainabilityData);
         
-        chrome.runtime.sendMessage({
-            type: 'PRODUCT_DATA',
-            data: sustainabilityData
-        });
+        if (sustainabilityData) {
+            chrome.runtime.sendMessage({
+                type: 'PRODUCT_DATA',
+                data: sustainabilityData
+            });
+        }
+        
         return sustainabilityData;
     } catch (error) {
         console.error('Error in analyzePage:', error);
