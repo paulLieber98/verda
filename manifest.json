@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "Verda - Sustainable Shopping Assistant",
+  "version": "1.0",
+  "description": "Evaluate the sustainability score of clothing items while shopping online",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "sidePanel",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://*.amazon.com/*",
+    "*://*.hm.com/*",
+    "*://*.zara.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Open Verda Sustainability Panel",
+    "default_icon": "verdalogo.png"
+  },
+  "icons": {
+    "128": "verdalogo.png"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.amazon.com/*",
+        "*://*.hm.com/*",
+        "*://*.zara.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+} 
