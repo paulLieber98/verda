@@ -139,7 +139,14 @@ const WATER_INDICATORS = [
 let lastAnalyzedUrl = '';
 let lastAnalyzedTitle = '';
 let debounceTimer = null;
-const DEBOUNCE_DELAY = 1000; // 1 second delay
+const DEBOUNCE_DELAY = 500; // Reduced from 1000 to 500ms
+
+// Cache DOM queries and analysis results
+const cache = {
+    elements: new Map(),
+    analysisResults: new Map(),
+    lastUpdate: 0
+};
 
 // Function to check if we should re-analyze
 function shouldReanalyze(currentUrl, currentTitle) {
@@ -186,52 +193,79 @@ function detectPlatform() {
     return null;
 }
 
-// Function to extract product information with retry logic
+// Optimized element finder
+function findElement(selectors) {
+    // Check cache first
+    if (cache.elements.has(selectors)) {
+        const cached = cache.elements.get(selectors);
+        if (Date.now() - cached.timestamp < 5000) { // 5 second cache
+            return cached.value;
+        }
+    }
+
+    const elements = selectors.split(',').map(s => s.trim());
+    for (const selector of elements) {
+        const element = document.querySelector(selector);
+        if (element?.textContent) {
+            const text = element.textContent.trim();
+            if (text.length > 0) {
+                // Cache the result
+                cache.elements.set(selectors, {
+                    value: text,
+                    timestamp: Date.now()
+                });
+                return text;
+            }
+        }
+    }
+    return null;
+}
+
+// Optimized product info extraction
 function extractProductInfo(platform) {
     try {
         const selectors = SUPPORTED_SITES[platform];
         if (!selectors) return null;
 
-        // Try multiple times with a delay
-        const maxRetries = 5;
-        let retryCount = 0;
-
-        const tryExtract = () => {
-            const title = findElement(selectors.productTitleSelector);
+        // Try to get info immediately first
+        const title = findElement(selectors.productTitleSelector);
+        if (title) {
             const description = findElement(selectors.descriptionSelector);
             const materials = findElement(selectors.materialSelector);
-
-            if (!title && retryCount < maxRetries) {
-                retryCount++;
-                return new Promise(resolve => setTimeout(() => resolve(tryExtract()), 1000));
-            }
-
+            
             return {
-                title: title || 'Unknown Product',
+                title: title,
                 description: description || '',
                 materials: materials || '',
                 url: window.location.href
             };
-        };
+        }
 
-        return tryExtract();
+        // If no title found, use retry logic but with shorter delays
+        const maxRetries = 3; // Reduced from 5
+        let retryCount = 0;
+
+        return new Promise((resolve) => {
+            const tryExtract = () => {
+                const title = findElement(selectors.productTitleSelector);
+                if (title || retryCount >= maxRetries) {
+                    resolve({
+                        title: title || 'Unknown Product',
+                        description: findElement(selectors.descriptionSelector) || '',
+                        materials: findElement(selectors.materialSelector) || '',
+                        url: window.location.href
+                    });
+                } else {
+                    retryCount++;
+                    setTimeout(tryExtract, 300); // Reduced from 1000ms to 300ms
+                }
+            };
+            tryExtract();
+        });
     } catch (error) {
         console.error('Error extracting product info:', error);
         return null;
     }
-}
-
-// Helper function to find elements with retry
-function findElement(selectors) {
-    const elements = selectors.split(',').map(s => s.trim());
-    for (const selector of elements) {
-        const element = document.querySelector(selector);
-        if (element && element.textContent) {
-            const text = element.textContent.trim();
-            if (text.length > 0) return text;
-        }
-    }
-    return null;
 }
 
 // Function to check if we're on a product page
@@ -258,10 +292,17 @@ function updateAnalysisStep(step) {
     });
 }
 
-// Function to get ChatGPT analysis
+// Optimized ChatGPT analysis
 async function getChatGPTAnalysis(productInfo) {
+    // Check cache first
+    const cacheKey = productInfo.url + productInfo.title;
+    const cached = cache.analysisResults.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < 300000) { // 5 minute cache
+        return cached.data;
+    }
+
     try {
-        updateAnalysisStep('Preparing sustainability analysis...');
+        updateAnalysisStep('Analyzing sustainability...');
         
         const prompt = `As a sustainability expert specializing in fashion and textiles, provide a concise sustainability analysis of this clothing item. Be direct and use simple language.
 
@@ -313,8 +354,6 @@ Format your response as JSON like this:
 
 Keep all explanations short and focused on the most important factors.`;
 
-        updateAnalysisStep('Analyzing product sustainability...');
-        
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -327,61 +366,22 @@ Keep all explanations short and focused on the most important factors.`;
                     role: 'user',
                     content: prompt
                 }],
-                temperature: 0.5,  // Reduced temperature for more consistent scoring
-                max_tokens: 2000
+                temperature: 0.3, // Reduced for faster, more consistent responses
+                max_tokens: 1000 // Reduced for faster responses
             })
         });
 
-        if (!response.ok) {
-            throw new Error('ChatGPT API request failed');
-        }
+        if (!response.ok) throw new Error('ChatGPT API request failed');
 
-        updateAnalysisStep('Processing sustainability data...');
-        
         const data = await response.json();
-        console.log('Raw GPT response:', data.choices[0].message.content);  // Debug log
-        
-        let analysis;
-        try {
-            analysis = JSON.parse(data.choices[0].message.content);
-        } catch (parseError) {
-            console.error('Error parsing GPT response:', parseError);
-            throw new Error('Invalid response format from GPT');
-        }
+        const analysis = JSON.parse(data.choices[0].message.content);
 
-        // Validate the analysis object
-        if (!analysis || typeof analysis !== 'object') {
-            throw new Error('Invalid analysis object');
-        }
-
-        // Ensure all required scores exist and are numbers
-        const requiredScores = ['score', 'materials', 'manufacturing', 'carbonFootprint', 'waterUsage'];
-        for (const scoreKey of requiredScores) {
-            if (!(scoreKey in analysis) || typeof analysis[scoreKey] !== 'number') {
-                throw new Error(`Missing or invalid ${scoreKey} score`);
-            }
-        }
-
-        // Process scores with validation
-        const processScore = (score, category) => {
-            const num = Number(score);
-            if (isNaN(num)) {
-                console.error(`Invalid ${category} score:`, score);
-                throw new Error(`Invalid ${category} score`);
-            }
-            // Ensure the score is within bounds
-            return Math.max(0, Math.min(100, num));
-        };
-
-        updateAnalysisStep('Finalizing results...');
-
-        // Process all scores with validation
         const processedData = {
-            score: processScore(analysis.score, 'overall'),
-            materials: processScore(analysis.materials, 'materials'),
-            manufacturing: processScore(analysis.manufacturing, 'manufacturing'),
-            carbonFootprint: processScore(analysis.carbonFootprint, 'carbon'),
-            waterUsage: processScore(analysis.waterUsage, 'water'),
+            score: Math.round(Number(analysis.score) || 35),
+            materials: Math.round(Number(analysis.materials) || 30),
+            manufacturing: Math.round(Number(analysis.manufacturing) || 40),
+            carbonFootprint: Math.round(Number(analysis.carbonFootprint) || 35),
+            waterUsage: Math.round(Number(analysis.waterUsage) || 35),
             explanations: {
                 materials: analysis.materials_explanation || 'Analysis unavailable',
                 manufacturing: analysis.manufacturing_explanation || 'Analysis unavailable',
@@ -392,94 +392,71 @@ Keep all explanations short and focused on the most important factors.`;
             productInfo: productInfo
         };
 
-        // Validate final scores
-        const hasAllDefaultScores = Object.values(processedData)
-            .filter(val => typeof val === 'number')
-            .every(score => score === 50);
+        // Cache the result
+        cache.analysisResults.set(cacheKey, {
+            data: processedData,
+            timestamp: Date.now()
+        });
 
-        if (hasAllDefaultScores) {
-            throw new Error('All scores defaulted to 50');
-        }
-
-        console.log('Processed sustainability data:', processedData);  // Debug log
         return processedData;
-
     } catch (error) {
         console.error('Error in sustainability analysis:', error);
-        updateAnalysisStep('Error in analysis: ' + error.message);
-
-        // Only default to 50 if we can't get any valid scores
-        const defaultData = {
-            score: 35,  // Default to slightly unsustainable for synthetic materials
-            materials: 30,
-            manufacturing: 40,
-            carbonFootprint: 35,
-            waterUsage: 35,
-            explanations: {
-                materials: 'Unable to analyze materials - likely synthetic based on product category',
-                manufacturing: 'Standard mass production assumed',
-                carbonFootprint: 'Typical manufacturing footprint assumed',
-                waterUsage: 'Standard water usage patterns assumed',
-                overall: 'Limited sustainability information available - scored conservatively'
-            },
-            productInfo: productInfo
-        };
-
-        // If we can detect synthetic materials in the product info, adjust scores
-        const syntheticTerms = ['polyester', 'nylon', 'acrylic', 'spandex', 'synthetic'];
-        const hasSynthetics = syntheticTerms.some(term => 
-            productInfo.materials?.toLowerCase().includes(term) || 
-            productInfo.description?.toLowerCase().includes(term)
-        );
-
-        if (hasSynthetics) {
-            defaultData.score = 25;
-            defaultData.materials = 20;
-            defaultData.manufacturing = 30;
-            defaultData.carbonFootprint = 25;
-            defaultData.waterUsage = 25;
-            defaultData.explanations.overall = 'Synthetic materials detected - lower sustainability score assigned';
-        }
-
-        return defaultData;
+        return getDefaultAnalysis(productInfo);
     }
 }
 
-// Modified analyzePage function with better error handling
+// Separate function for default analysis
+function getDefaultAnalysis(productInfo) {
+    const defaultData = {
+        score: 35,
+        materials: 30,
+        manufacturing: 40,
+        carbonFootprint: 35,
+        waterUsage: 35,
+        explanations: {
+            materials: 'Unable to analyze materials',
+            manufacturing: 'Standard production assumed',
+            carbonFootprint: 'Average footprint assumed',
+            waterUsage: 'Standard usage assumed',
+            overall: 'Limited information available'
+        },
+        productInfo: productInfo
+    };
+
+    // Quick check for synthetics
+    if (productInfo.materials?.toLowerCase().match(/polyester|nylon|acrylic|spandex|synthetic/)) {
+        Object.assign(defaultData, {
+            score: 25,
+            materials: 20,
+            manufacturing: 30,
+            carbonFootprint: 25,
+            waterUsage: 25
+        });
+    }
+
+    return defaultData;
+}
+
+// Optimized page analysis
 async function analyzePage() {
     try {
         const currentUrl = window.location.href;
         const platform = detectPlatform();
         
         if (!platform || !isProductPage()) {
-            console.log('No supported product page detected');
-            chrome.runtime.sendMessage({
-                type: 'PRODUCT_DATA',
-                data: null
-            });
+            chrome.runtime.sendMessage({ type: 'PRODUCT_DATA', data: null });
             return null;
         }
 
-        // Get current product info with retries
         const productInfo = await extractProductInfo(platform);
-        if (!productInfo) {
-            console.log('No product detected after retries');
-            chrome.runtime.sendMessage({
-                type: 'PRODUCT_DATA',
-                data: null
-            });
+        if (!productInfo?.title) {
+            chrome.runtime.sendMessage({ type: 'PRODUCT_DATA', data: null });
             return null;
         }
 
-        // Check if we should re-analyze
-        if (!shouldReanalyze(currentUrl, productInfo.title)) {
-            console.log('Skipping analysis - same product');
-            return null;
-        }
+        if (!shouldReanalyze(currentUrl, productInfo.title)) return null;
 
-        updateAnalysisStep('Starting sustainability analysis...');
         const sustainabilityData = await getChatGPTAnalysis(productInfo);
-        
         if (sustainabilityData) {
             chrome.runtime.sendMessage({
                 type: 'PRODUCT_DATA',
@@ -490,10 +467,7 @@ async function analyzePage() {
         return sustainabilityData;
     } catch (error) {
         console.error('Error in analyzePage:', error);
-        chrome.runtime.sendMessage({
-            type: 'PRODUCT_DATA',
-            data: null
-        });
+        chrome.runtime.sendMessage({ type: 'PRODUCT_DATA', data: null });
         return null;
     }
 }
