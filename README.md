@@ -1,57 +1,49 @@
 # Verda - Sustainable Shopping Assistant
 
-A Chrome extension that helps you make environmentally conscious clothing purchases by providing sustainability scores for items while you shop online.
+A Chrome extension submission for the MCA Eagles' CodeNest 2025 Hackathon.
+
+## About
+
+Verda helps you make sustainable shopping choices by analyzing clothing items on popular e-commerce sites (for now, only: Amazon, H&M, and Zara). --> provides real time sustainability evaluationscores and detailed insights+explanations about materials, manufacturing processes, etc...
 
 ## Features
 
-- Real-time sustainability scoring for clothing items
-- Analysis of materials and their environmental impact
-- Evaluation of multiple sustainability factors:
-  - Material sustainability
-  - Manufacturing process
-  - Carbon footprint
-  - Water usage
-- Clean and intuitive side panel interface
-- Support for major e-commerce platforms (Amazon, H&M)
+- Real-time sustainability analysis of clothing products
+- Comprehensive scoring system (0-100)
+- Detailed breakdown of environmental impact factors
+- Support for multiple major retailers
+- Clean, user-friendly interface
 
 ## Installation
 
-1. Clone this repository or download the ZIP file
-2. Open Chrome and go to `chrome://extensions/`
-3. Enable "Developer mode" in the top right
-4. Click "Load unpacked" and select the extension directory
+# Verda - Chrome Extension  
 
-## How It Works
+## Installation  
 
-Verda analyzes product information from supported e-commerce websites and calculates a sustainability score based on various factors:
+### Step 1: Download the Extension  
+1. Go to the GitHub repository for Verda.  
+2. Click the "Code" button, then select "Download ZIP."  
+3. Extract (unzip) the folder after downloading.  
 
-- Material composition (organic, recycled, synthetic)
-- Manufacturing processes
-- Environmental impact metrics
-- Water usage in production
+### Step 2: Open Chrome Extensions Settings  
+1. Open Google Chrome.  
+2. In the address bar, type:  
+chrome://extensions/  
+3. Click "Load unpacked"  
+4. Select the folder where you extracted the Verda files.  
+5. The extension should now be loaded and ready to use.  
 
-The extension displays this information in a convenient side panel while you shop, helping you make more sustainable choices.
+## Team
 
-## Supported Websites
+- Paul Lieber
 
-Currently supports:
-- Amazon
-- H&M
-
-More platforms will be added in future updates.
-
-## Contributing
-
-Feel free to contribute to this project by:
-- Adding support for more e-commerce platforms
-- Improving the sustainability scoring algorithm
-- Enhancing the UI/UX
-- Reporting bugs or suggesting features
-
-## License
-
-MIT License - feel free to use and modify as needed.
 
 ## Hackathon Project
 
 This project was created for the CodeNest Hackathon with the theme of sustainability. 
+
+## Future Work
+
+- Add more retailers
+- Add more features to the extension
+- Add more detailed sustainability analysis
