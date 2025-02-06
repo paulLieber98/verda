@@ -6,14 +6,14 @@ const SUPPORTED_SITES = {
         materialSelector: '#productDetails_techSpec_section_1, #detailBullets_feature_div, .product-facts-table, #productDetails_db_sections, .fabric-type, #productOverview_feature_div, #technicalSpecifications_feature_div'
     },
     'hm': {
-        productTitleSelector: '.product-item-headline, h1.item-heading, .product-input-label',
-        descriptionSelector: '.pdp-description-text, .description-text, .product-description',
-        materialSelector: '.pdp-description-list, .product-composition-list, .product-composition, .product-detail-information, .product-materials'
+        productTitleSelector: 'h1.heading, h1[class*="heading"], h1[class*="title"], h1.item-heading, h1[class*="product-name"], h1[class*="product-title"]',
+        descriptionSelector: '#description-text, button[id*="toggle-description"], [class*="description"]',
+        materialSelector: '#section-materialsAndSuppliersAccordion, button[id*="toggle-materialsAndSuppliers"], .COMPOSITION, [class*="materials"], [class*="composition"]'
     },
     'zara': {
-        productTitleSelector: '.product-detail-info h1, .product-name, .product-title',
-        descriptionSelector: '.product-detail-description, .product-description, .description',
-        materialSelector: '.product-detail-info .composition-list, .product-composition, .composition'
+        productTitleSelector: '.product-detail-info h1, .product-name, .product-title, [data-qa-label="product-name-heading"], .product-detail-view__header',
+        descriptionSelector: '.product-detail-description, .product-description, .description, [data-qa-label="product-details-description"], .product-detail-view__description',
+        materialSelector: '.product-detail-info .composition-list, .product-composition, .composition, [data-qa-label="product-details-materials"], .product-detail-view__materials'
     },
     // Add more e-commerce sites as needed
 };
@@ -168,23 +168,24 @@ function detectPlatform() {
     
     // Amazon detection
     if (hostname.includes('amazon')) {
-        // Only detect on product pages
         if (pathname.includes('/dp/') || pathname.includes('/gp/product/') || pathname.includes('/product/')) {
             return 'amazon';
         }
     }
     
-    // H&M detection
-    if (hostname.includes('hm') || hostname.includes('h&m') || hostname.includes('hm.com')) {
-        // Only detect on product pages
-        if (pathname.includes('/products/') || pathname.includes('/product/') || pathname.match(/\d+\.html/)) {
+    // H&M detection - simplified to work across all product pages
+    if (hostname.includes('hm.com') || hostname.includes('www2.hm.com')) {
+        // Match any product page URL pattern
+        if (pathname.includes('/productpage') || 
+            pathname.includes('/product') || 
+            pathname.match(/\d+\.html/) ||
+            (pathname.includes('/en_') && pathname.includes('html'))) {
             return 'hm';
         }
     }
     
     // Zara detection
-    if (hostname.includes('zara')) {
-        // Only detect on product pages
+    if (hostname.includes('zara.com')) {
         if (pathname.includes('/product/') || pathname.match(/\d+\/\d+/)) {
             return 'zara';
         }
@@ -193,46 +194,94 @@ function detectPlatform() {
     return null;
 }
 
-// Optimized element finder
-function findElement(selectors) {
-    // Check cache first
-    if (cache.elements.has(selectors)) {
-        const cached = cache.elements.get(selectors);
-        if (Date.now() - cached.timestamp < 5000) { // 5 second cache
-            return cached.value;
-        }
-    }
+// Enhanced findElement function with better H&M material extraction
+function findElement(selectors, maxRetries = 5, retryDelay = 300) {
+    return new Promise((resolve) => {
+        let attempts = 0;
 
-    const elements = selectors.split(',').map(s => s.trim());
-    for (const selector of elements) {
-        const element = document.querySelector(selector);
-        if (element?.textContent) {
-            const text = element.textContent.trim();
-            if (text.length > 0) {
-                // Cache the result
-                cache.elements.set(selectors, {
-                    value: text,
-                    timestamp: Date.now()
-                });
-                return text;
+        const tryFind = () => {
+            if (window.location.hostname.includes('hm.com')) {
+                // Special handling for H&M product title
+                if (selectors === SUPPORTED_SITES.hm.productTitleSelector) {
+                    // Try to find the main product heading
+                    const headings = document.getElementsByTagName('h1');
+                    for (const heading of headings) {
+                        const text = heading.textContent?.trim();
+                        if (text && text.length > 0 && !text.includes('%')) {
+                            return resolve(text);
+                        }
+                    }
+                }
+                
+                // Special handling for H&M materials
+                if (selectors === SUPPORTED_SITES.hm.materialSelector) {
+                    const materialsButton = document.querySelector('button[id*="toggle-materialsAndSuppliers"]');
+                    if (materialsButton) {
+                        const materialsSection = document.querySelector('#section-materialsAndSuppliersAccordion');
+                        if (materialsSection) {
+                            const composition = materialsSection.querySelector('.COMPOSITION')?.textContent;
+                            const additionalInfo = materialsSection.textContent.match(/(\d+%\s*[^,\n]+)/g);
+                            
+                            let materialText = '';
+                            if (composition) materialText += composition + ' ';
+                            if (additionalInfo) materialText += additionalInfo.join(' ');
+                            
+                            if (materialText.trim()) {
+                                return resolve(materialText.trim());
+                            }
+                        }
+                    }
+                }
+
+                // Try to find any element with the selectors
+                const elements = document.querySelectorAll(selectors);
+                for (const element of elements) {
+                    const text = element.textContent?.trim();
+                    if (text && text.length > 0) {
+                        return resolve(text);
+                    }
+                }
+            } else {
+                // Normal element finding for other sites
+                const elements = selectors.split(',').map(s => s.trim());
+                for (const selector of elements) {
+                    const element = document.querySelector(selector);
+                    if (element?.textContent) {
+                        const text = element.textContent.trim();
+                        if (text.length > 0) {
+                            return resolve(text);
+                        }
+                    }
+                }
             }
-        }
-    }
-    return null;
+
+            attempts++;
+            if (attempts < maxRetries) {
+                setTimeout(tryFind, retryDelay);
+            } else {
+                resolve(null);
+            }
+        };
+
+        tryFind();
+    });
 }
 
-// Optimized product info extraction
-function extractProductInfo(platform) {
+// Enhanced product info extraction with better error handling
+async function extractProductInfo(platform) {
     try {
         const selectors = SUPPORTED_SITES[platform];
         if (!selectors) return null;
 
-        // Try to get info immediately first
-        const title = findElement(selectors.productTitleSelector);
+        // Wait for all elements with retry logic
+        const [title, description, materials] = await Promise.all([
+            findElement(selectors.productTitleSelector),
+            findElement(selectors.descriptionSelector),
+            findElement(selectors.materialSelector)
+        ]);
+
+        // Only proceed if we have at least a title
         if (title) {
-            const description = findElement(selectors.descriptionSelector);
-            const materials = findElement(selectors.materialSelector);
-            
             return {
                 title: title,
                 description: description || '',
@@ -241,34 +290,14 @@ function extractProductInfo(platform) {
             };
         }
 
-        // If no title found, use retry logic but with shorter delays
-        const maxRetries = 3; // Reduced from 5
-        let retryCount = 0;
-
-        return new Promise((resolve) => {
-            const tryExtract = () => {
-                const title = findElement(selectors.productTitleSelector);
-                if (title || retryCount >= maxRetries) {
-                    resolve({
-                        title: title || 'Unknown Product',
-                        description: findElement(selectors.descriptionSelector) || '',
-                        materials: findElement(selectors.materialSelector) || '',
-                        url: window.location.href
-                    });
-                } else {
-                    retryCount++;
-                    setTimeout(tryExtract, 300); // Reduced from 1000ms to 300ms
-                }
-            };
-            tryExtract();
-        });
+        return null;
     } catch (error) {
         console.error('Error extracting product info:', error);
         return null;
     }
 }
 
-// Function to check if we're on a product page
+// Enhanced isProductPage function with more reliable detection
 function isProductPage() {
     const platform = detectPlatform();
     if (!platform) return false;
@@ -276,12 +305,34 @@ function isProductPage() {
     const selectors = SUPPORTED_SITES[platform];
     if (!selectors) return false;
 
-    // Check if any product elements exist
+    // For H&M specifically, check for any product indicators
+    if (platform === 'hm') {
+        // Common indicators across all H&M product pages
+        const hmProductIndicators = [
+            'button[id*="toggle-materialsAndSuppliers"]',
+            'button[id*="toggle-description"]',
+            '[class*="fa226d"]',
+            '[class*="af6753"]',
+            '[class*="d582fb"]',
+            'button[class*="add"]',
+            'select[data-testid*="size"]',
+            '.COMPOSITION'
+        ];
+
+        for (const indicator of hmProductIndicators) {
+            if (document.querySelector(indicator)) {
+                return true;
+            }
+        }
+    }
+
+    // Generic product page detection
     const hasTitle = document.querySelector(selectors.productTitleSelector);
     const hasDescription = document.querySelector(selectors.descriptionSelector);
     const hasMaterials = document.querySelector(selectors.materialSelector);
+    const hasPrice = document.querySelector('[class*="price"], .price-value, [data-price]');
 
-    return hasTitle || hasDescription || hasMaterials;
+    return hasTitle || (hasDescription && hasPrice) || (hasMaterials && hasPrice);
 }
 
 // Function to send analysis step update

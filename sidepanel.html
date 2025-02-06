@@ -5,17 +5,22 @@
     <title>Verda - Sustainable Shopping Assistant</title>
     <style>
         :root {
-            --primary-color: #2ecc71;
-            --background-color: #f8f9fa;
-            --text-color: #2c3e50;
-            --border-radius: 12px;
-            --shadow: 0 2px 8px rgba(0,0,0,0.1);
+            --primary-color: #34D399;
+            --primary-light: #A7F3D0;
+            --primary-dark: #059669;
+            --background-color: #F9FAFB;
+            --text-color: #1F2937;
+            --text-secondary: #6B7280;
+            --border-radius: 16px;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
         }
 
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             margin: 0;
-            padding: 16px;
+            padding: 20px;
             background-color: var(--background-color);
             color: var(--text-color);
             line-height: 1.5;
@@ -26,30 +31,41 @@
             display: flex;
             align-items: center;
             margin-bottom: 24px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--primary-light);
         }
 
         .logo {
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             margin-right: 12px;
             object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
         }
 
         .title {
-            font-size: 1.4em;
-            font-weight: 600;
-            color: var(--primary-color);
+            font-size: 1.5em;
+            font-weight: 700;
+            color: var(--primary-dark);
             letter-spacing: -0.5px;
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .card {
             background: white;
             border-radius: var(--border-radius);
-            padding: 20px;
-            margin-bottom: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
             box-shadow: var(--shadow);
+            border: 1px solid rgba(0,0,0,0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
         }
 
         .product-info {
@@ -57,200 +73,177 @@
         }
 
         .product-title {
-            font-size: 1.1em;
+            font-size: 1.2em;
             font-weight: 600;
             color: var(--text-color);
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             line-height: 1.4;
         }
 
         .sustainability-score {
             text-align: center;
-            padding: 24px 20px;
+            padding: 32px 24px;
         }
 
         .score-circle {
-            width: 140px;
-            height: 140px;
+            width: 160px;
+            height: 160px;
             border-radius: 50%;
-            border: 8px solid var(--primary-color);
+            border: 10px solid var(--primary-light);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 32px;
+            margin: 0 auto 40px;
             position: relative;
             background: white;
             box-shadow: var(--shadow);
+            transition: transform 0.3s ease;
+        }
+
+        .score-circle:hover {
+            transform: scale(1.05);
         }
 
         .score-number {
-            font-size: 3em;
+            font-size: 3.5em;
             font-weight: 700;
-            color: var(--text-color);
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             font-family: system-ui;
         }
 
         .score-label {
-            font-size: 0.85em;
+            font-size: 0.9em;
             font-weight: 600;
             position: absolute;
-            bottom: -28px;
+            bottom: -32px;
             width: 100%;
             text-align: center;
-            color: var(--text-color);
+            color: var(--text-secondary);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-family: system-ui;
+            letter-spacing: 1px;
         }
 
         .factors {
             padding: 24px;
+            background: linear-gradient(to bottom, white, var(--background-color));
         }
 
         .factor-item {
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid #eee;
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--primary-light);
         }
 
         .factor-item:last-child {
             margin-bottom: 0;
             border-bottom: none;
+            padding-bottom: 0;
         }
 
         .factor-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
         }
 
         .factor-label {
             font-weight: 600;
             color: var(--text-color);
-            font-size: 0.95em;
+            font-size: 1em;
         }
 
         .factor-score {
-            font-weight: 600;
-            color: var(--primary-color);
-            font-size: 1.1em;
+            font-weight: 700;
+            color: var(--primary-dark);
+            font-size: 1.2em;
             font-family: system-ui;
         }
 
         .factor-explanation {
-            font-size: 0.9em;
-            color: #666;
-            margin-top: 12px;
-            line-height: 1.4;
-            padding: 8px 12px;
-            background: #f8f9fa;
-            border-radius: 6px;
-            border-left: 3px solid var(--primary-color);
-        }
-
-        .overall-explanation {
-            margin-top: 24px;
-            padding: 16px;
-            background: #e8f8f5;
-            border-radius: var(--border-radius);
             font-size: 0.95em;
+            color: var(--text-secondary);
+            margin-top: 12px;
             line-height: 1.5;
-            color: #2c3e50;
-        }
-
-        .overall-explanation h3 {
-            color: var(--primary-color);
-            margin: 0 0 8px 0;
-            font-size: 1em;
-            font-weight: 600;
+            padding: 12px 16px;
+            background: var(--background-color);
+            border-radius: 12px;
+            border-left: 4px solid var(--primary-color);
         }
 
         .progress-bar {
             height: 8px;
-            background: #e9ecef;
-            border-radius: 6px;
+            background: var(--primary-light);
+            border-radius: 8px;
             overflow: hidden;
+            box-shadow: var(--shadow-sm);
         }
 
         .progress-fill {
             height: 100%;
-            background: var(--primary-color);
-            transition: width 0.5s ease, background-color 0.5s ease;
+            background: linear-gradient(90deg, var(--primary-color), var(--primary-dark));
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s ease;
             transform: translateZ(0);
         }
 
-        #loading {
-            text-align: center;
-            padding: 40px 20px;
-            color: #666;
-            font-weight: 500;
+        .overall-explanation {
+            margin-top: 28px;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--primary-light), #f0fdf4);
+            border-radius: var(--border-radius);
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: var(--text-color);
+            box-shadow: var(--shadow-sm);
         }
 
-        #no-product {
-            text-align: center;
-            padding: 32px 20px;
-            color: #666;
-            font-weight: 500;
+        .overall-explanation h3 {
+            color: var(--primary-dark);
+            margin: 0 0 12px 0;
+            font-size: 1.1em;
+            font-weight: 600;
         }
 
         .tips {
-            background: #e8f8f5;
+            background: linear-gradient(135deg, #f0fdf4, var(--primary-light));
             border-radius: var(--border-radius);
-            padding: 20px;
-            margin-top: 24px;
+            padding: 24px;
+            margin-top: 28px;
+            box-shadow: var(--shadow);
         }
 
         .tips h3 {
-            color: var(--primary-color);
+            color: var(--primary-dark);
             margin: 0 0 16px 0;
             font-size: 1.1em;
             font-weight: 600;
         }
 
         .tip-item {
-            margin-bottom: 12px;
-            padding-left: 24px;
+            margin-bottom: 14px;
+            padding-left: 28px;
             position: relative;
-            color: #2c3e50;
+            color: var(--text-color);
             font-size: 0.95em;
+            transition: transform 0.2s ease;
         }
 
-        .tip-item:last-child {
-            margin-bottom: 0;
+        .tip-item:hover {
+            transform: translateX(4px);
         }
 
         .tip-item:before {
             content: "";
-            width: 6px;
-            height: 6px;
+            width: 8px;
+            height: 8px;
             background-color: var(--primary-color);
             border-radius: 50%;
             position: absolute;
             left: 8px;
             top: 8px;
-        }
-
-        .store-item {
-            margin-bottom: 8px;
-            padding-left: 24px;
-            position: relative;
-            color: #2c3e50;
-        }
-
-        .store-item:before {
-            content: "";
-            width: 6px;
-            height: 6px;
-            background-color: var(--primary-color);
-            border-radius: 50%;
-            position: absolute;
-            left: 8px;
-            top: 8px;
-        }
-
-        .debug-info {
-            display: none;
+            box-shadow: 0 0 0 2px var(--primary-light);
         }
 
         /* Loading animation styles */
@@ -259,34 +252,64 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 40px 20px;
+            padding: 48px 24px;
         }
 
         .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid var(--primary-color);
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--primary-light);
+            border-top: 4px solid var(--primary-color);
             border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 16px;
+            animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
         }
 
         .loading-text {
-            color: #666;
+            color: var(--text-color);
             font-weight: 500;
             text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 12px;
         }
 
         .loading-steps {
-            margin-top: 12px;
             font-size: 0.9em;
-            color: #888;
+            color: var(--text-secondary);
+            text-align: center;
         }
 
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        /* No product state */
+        #no-product {
+            text-align: center;
+            padding: 40px 24px;
+        }
+
+        .store-list {
+            margin-top: 24px;
+            display: grid;
+            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        }
+
+        .store-item {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border: 1px solid var(--primary-light);
+        }
+
+        .store-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
         }
     </style>
 </head>
@@ -299,19 +322,22 @@
     <div id="loading" class="card">
         <div class="loading-container">
             <div class="loading-spinner"></div>
-            <div class="loading-text">Analyzing product sustainability...</div>
+            <div class="loading-text">Analyzing Sustainability</div>
             <div class="loading-steps" id="loading-step">Gathering product information...</div>
         </div>
     </div>
 
     <div id="no-product" class="card" style="display: none;">
-        <div style="margin-bottom: 20px;">
-            No clothing item detected on this page.
-            <br><br>
+        <h3 style="color: var(--primary-dark); margin-bottom: 16px;">No Product Detected</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">
             Browse to a supported online store to see sustainability scores.
+        </p>
+        <div class="tip-box" style="background: var(--primary-light); padding: 12px 16px; border-radius: 12px; margin-bottom: 24px;">
+            <p style="color: var(--text-color); font-size: 0.9em; margin: 0;">
+                <strong>💡 Tip:</strong> Already on a product page? Try refreshing the page to trigger the analysis.
+            </p>
         </div>
-        <div class="tips">
-            <h3>Supported Stores</h3>
+        <div class="store-list">
             <div class="store-item">Amazon</div>
             <div class="store-item">H&M</div>
             <div class="store-item">Zara</div>
