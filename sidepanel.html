@@ -5,66 +5,194 @@
     <title>Verda - Sustainable Shopping Assistant</title>
     <style>
         :root {
-            --primary-color: #34D399;
-            --primary-light: #A7F3D0;
-            --primary-dark: #059669;
-            --background-color: #F9FAFB;
+            /* Base colors */
+            --primary-color: #10B981;
+            --primary-light: #D1FAE5;
+            --primary-dark: #047857;
+            
+            /* Score-based colors */
+            --score-bad: #EF4444;
+            --score-bad-light: #FEE2E2;
+            --score-bad-dark: #B91C1C;
+            --score-moderate: #F59E0B;
+            --score-moderate-light: #FEF3C7;
+            --score-moderate-dark: #D97706;
+            --score-good: #10B981;
+            --score-good-light: #D1FAE5;
+            --score-good-dark: #047857;
+
+            /* Gradients */
+            --gradient-bad: linear-gradient(135deg, var(--score-bad-dark), var(--score-bad));
+            --gradient-moderate: linear-gradient(135deg, var(--score-moderate-dark), var(--score-moderate));
+            --gradient-good: linear-gradient(135deg, var(--score-good-dark), var(--score-good));
+            
+            --background-color: #F8FAFC;
             --text-color: #1F2937;
-            --text-secondary: #6B7280;
-            --border-radius: 16px;
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-            --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+            --text-secondary: #64748B;
+            --border-radius: 20px;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --shadow-lg: 0 12px 24px -4px rgba(0,0,0,0.12);
+        }
+
+        /* Score-based styling classes */
+        .score-circle[data-score="bad"] {
+            border-color: var(--score-bad-light);
+        }
+        .score-circle[data-score="moderate"] {
+            border-color: var(--score-moderate-light);
+        }
+        .score-circle[data-score="good"] {
+            border-color: var(--score-good-light);
+        }
+
+        .score-number {
+            font-size: 5em !important;
+            font-weight: 800 !important;
+            font-family: system-ui !important;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .score-number[data-score="bad"] {
+            background: var(--gradient-bad);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .score-number[data-score="moderate"] {
+            background: var(--gradient-moderate);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .score-number[data-score="good"] {
+            background: var(--gradient-good);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .progress-fill[data-score="bad"] {
+            background: var(--gradient-bad);
+        }
+        .progress-fill[data-score="moderate"] {
+            background: var(--gradient-moderate);
+        }
+        .progress-fill[data-score="good"] {
+            background: var(--gradient-good);
+        }
+
+        .factor-score {
+            font-weight: 700;
+            font-size: 1.3em;
+            font-family: system-ui;
+        }
+
+        .factor-score[data-score="bad"] {
+            background: var(--gradient-bad);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .factor-score[data-score="moderate"] {
+            background: var(--gradient-moderate);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .factor-score[data-score="good"] {
+            background: var(--gradient-good);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .factor-explanation[data-score="bad"] {
+            border-left-color: var(--score-bad);
+            background: var(--score-bad-light);
+        }
+        .factor-explanation[data-score="moderate"] {
+            border-left-color: var(--score-moderate);
+            background: var(--score-moderate-light);
+        }
+        .factor-explanation[data-score="good"] {
+            border-left-color: var(--score-good);
+            background: var(--score-good-light);
+        }
+
+        /* Update the existing styles to use these colors */
+        .sustainability-score {
+            text-align: center;
+            padding: 36px 28px;
+            background: var(--gradient-light);
+            transition: background 0.3s ease;
+        }
+        
+        .sustainability-score[data-score="bad"] {
+            background: linear-gradient(135deg, var(--score-bad-light), #FFF);
+        }
+        .sustainability-score[data-score="moderate"] {
+            background: linear-gradient(135deg, var(--score-moderate-light), #FFF);
+        }
+        .sustainability-score[data-score="good"] {
+            background: linear-gradient(135deg, var(--score-good-light), #FFF);
         }
 
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 24px;
             background-color: var(--background-color);
             color: var(--text-color);
-            line-height: 1.5;
+            line-height: 1.6;
             -webkit-font-smoothing: antialiased;
         }
 
         .header {
             display: flex;
             align-items: center;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
+            margin-bottom: 28px;
+            padding-bottom: 20px;
             border-bottom: 2px solid var(--primary-light);
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 60%;
+            height: 2px;
+            background: var(--gradient-primary);
         }
 
         .logo {
-            width: 36px;
-            height: 36px;
-            margin-right: 12px;
+            width: 42px;
+            height: 42px;
+            margin-right: 16px;
             object-fit: contain;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
         }
 
         .title {
-            font-size: 1.5em;
+            font-size: 1.8em;
             font-weight: 700;
-            color: var(--primary-dark);
-            letter-spacing: -0.5px;
-            background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
+            background: var(--gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
         }
 
         .card {
             background: white;
             border-radius: var(--border-radius);
-            padding: 24px;
-            margin-bottom: 20px;
+            padding: 28px;
+            margin-bottom: 24px;
             box-shadow: var(--shadow);
-            border: 1px solid rgba(0,0,0,0.05);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border: 1px solid rgba(0,0,0,0.04);
+            transition: all 0.3s ease;
         }
 
         .card:hover {
-            transform: translateY(-2px);
+            transform: translateY(-3px);
             box-shadow: var(--shadow-lg);
         }
 
@@ -80,86 +208,65 @@
             line-height: 1.4;
         }
 
-        .sustainability-score {
-            text-align: center;
-            padding: 32px 24px;
-        }
-
         .score-circle {
-            width: 160px;
-            height: 160px;
+            width: 180px;
+            height: 180px;
             border-radius: 50%;
-            border: 10px solid var(--primary-light);
+            border: 12px solid var(--primary-light);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 40px;
+            margin: 0 auto 48px;
             position: relative;
             background: white;
             box-shadow: var(--shadow);
-            transition: transform 0.3s ease;
+            transition: all 0.4s ease;
         }
 
         .score-circle:hover {
-            transform: scale(1.05);
-        }
-
-        .score-number {
-            font-size: 3.5em;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-family: system-ui;
+            transform: scale(1.05) rotate(5deg);
+            border-color: var(--primary-color);
         }
 
         .score-label {
-            font-size: 0.9em;
+            font-size: 0.95em;
             font-weight: 600;
             position: absolute;
-            bottom: -32px;
+            bottom: -36px;
             width: 100%;
             text-align: center;
             color: var(--text-secondary);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
         }
 
         .factors {
-            padding: 24px;
-            background: linear-gradient(to bottom, white, var(--background-color));
+            padding: 28px;
+            background: white;
         }
 
         .factor-item {
-            margin-bottom: 28px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--primary-light);
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 2px solid var(--primary-light);
+            transition: transform 0.3s ease;
         }
 
-        .factor-item:last-child {
-            margin-bottom: 0;
-            border-bottom: none;
-            padding-bottom: 0;
+        .factor-item:hover {
+            transform: translateX(8px);
         }
 
         .factor-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
 
         .factor-label {
             font-weight: 600;
             color: var(--text-color);
-            font-size: 1em;
-        }
-
-        .factor-score {
-            font-weight: 700;
-            color: var(--primary-dark);
-            font-size: 1.2em;
-            font-family: system-ui;
+            font-size: 1.1em;
         }
 
         .factor-explanation {
@@ -174,17 +281,17 @@
         }
 
         .progress-bar {
-            height: 8px;
+            height: 10px;
             background: var(--primary-light);
-            border-radius: 8px;
+            border-radius: 10px;
             overflow: hidden;
             box-shadow: var(--shadow-sm);
         }
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--primary-color), var(--primary-dark));
-            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s ease;
+            background: var(--gradient-primary);
+            transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
             transform: translateZ(0);
         }
 
@@ -256,26 +363,26 @@
         }
 
         .loading-spinner {
-            width: 48px;
-            height: 48px;
-            border: 4px solid var(--primary-light);
-            border-top: 4px solid var(--primary-color);
+            width: 56px;
+            height: 56px;
+            border: 5px solid var(--primary-light);
+            border-top: 5px solid var(--primary-color);
             border-radius: 50%;
             animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-            margin-bottom: 24px;
+            margin-bottom: 28px;
             box-shadow: var(--shadow);
         }
 
         .loading-text {
             color: var(--text-color);
-            font-weight: 500;
+            font-weight: 600;
             text-align: center;
-            font-size: 1.1em;
-            margin-bottom: 12px;
+            font-size: 1.2em;
+            margin-bottom: 16px;
         }
 
         .loading-steps {
-            font-size: 0.9em;
+            font-size: 1em;
             color: var(--text-secondary);
             text-align: center;
         }
@@ -292,24 +399,37 @@
         }
 
         .store-list {
-            margin-top: 24px;
+            margin-top: 28px;
             display: grid;
-            gap: 16px;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
         }
 
         .store-item {
             background: white;
-            padding: 16px;
-            border-radius: 12px;
-            box-shadow: var(--shadow-sm);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            border: 1px solid var(--primary-light);
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+            text-align: center;
+            font-weight: 500;
+            border: 2px solid var(--primary-light);
         }
 
         .store-item:hover {
-            transform: translateY(-2px);
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary-color);
+            background: var(--gradient-light);
+        }
+
+        .tip-box {
+            background: var(--gradient-light);
+            padding: 16px 20px;
+            border-radius: 16px;
+            margin-bottom: 28px;
             box-shadow: var(--shadow);
+            border-left: 4px solid var(--primary-color);
         }
     </style>
 </head>
@@ -351,7 +471,7 @@
 
         <div class="card sustainability-score">
             <div class="score-circle">
-                <div class="score-number" id="score">--</div>
+                <div id="score" class="score-number">--</div>
                 <div class="score-label">Sustainability Score</div>
             </div>
             <div class="overall-explanation" id="overall-explanation">
@@ -420,5 +540,31 @@
     </div>
 
     <script src="sidepanel.js"></script>
+    <script>
+        // Add this script to handle dynamic color coding
+        function updateScoreColors() {
+            const elements = document.querySelectorAll('[data-score]');
+            elements.forEach(element => {
+                const score = parseInt(element.textContent);
+                if (score <= 40) {
+                    element.setAttribute('data-score', 'bad');
+                } else if (score <= 70) {
+                    element.setAttribute('data-score', 'moderate');
+                } else {
+                    element.setAttribute('data-score', 'good');
+                }
+            });
+        }
+
+        // Call this function whenever scores are updated
+        document.addEventListener('DOMContentLoaded', () => {
+            const observer = new MutationObserver(updateScoreColors);
+            observer.observe(document.body, { 
+                subtree: true, 
+                characterData: true, 
+                childList: true 
+            });
+        });
+    </script>
 </body>
 </html> 
