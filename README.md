@@ -28,10 +28,11 @@ Verda helps you make sustainable shopping choices by analyzing clothing items on
 ### Step 2: Open Chrome Extensions Settings  
 1. Open Google Chrome.  
 2. In the address bar, type:  
-chrome://extensions/  
-3. Click "Load unpacked"  
-4. Select the folder where you extracted the Verda files.  
-5. The extension should now be loaded and ready to use.  
+chrome://extensions/
+3. Enable "Developer Mode"
+4. Click "Load unpacked"  
+5. Select the folder where you extracted the Verda files.  
+6. The extension should now be loaded and ready to use.  
 
 ## Team
 
