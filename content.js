@@ -28,53 +28,53 @@ let lastAnalyzedTitle = '';
 let debounceTimer = null;
 const DEBOUNCE_DELAY = 500;
 
-// Enhanced keywords for sustainability scoring with detailed weights
+// Enhanced keywords for sustainability scoring with adjusted weights
 const SUSTAINABLE_MATERIALS = [
     // Highly sustainable natural materials
-    { material: 'organic cotton', weight: 20, category: 'natural', waterImpact: -10, carbonImpact: -5 },
-    { material: 'hemp', weight: 25, category: 'natural', waterImpact: -15, carbonImpact: -10 },
-    { material: 'organic linen', weight: 22, category: 'natural', waterImpact: -12, carbonImpact: -8 },
-    { material: 'organic wool', weight: 18, category: 'natural', waterImpact: -5, carbonImpact: -5 },
+    { material: 'organic cotton', weight: 30, category: 'natural', waterImpact: -15, carbonImpact: -10 },
+    { material: 'hemp', weight: 35, category: 'natural', waterImpact: -20, carbonImpact: -15 },
+    { material: 'organic linen', weight: 32, category: 'natural', waterImpact: -18, carbonImpact: -12 },
+    { material: 'organic wool', weight: 28, category: 'natural', waterImpact: -10, carbonImpact: -8 },
     
-    // Recycled materials
-    { material: 'recycled polyester', weight: 15, category: 'recycled', waterImpact: -8, carbonImpact: -12 },
-    { material: 'recycled cotton', weight: 18, category: 'recycled', waterImpact: -10, carbonImpact: -8 },
-    { material: 'recycled wool', weight: 16, category: 'recycled', waterImpact: -8, carbonImpact: -8 },
-    { material: 'deadstock', weight: 20, category: 'recycled', waterImpact: -15, carbonImpact: -15 },
+    // Recycled materials - increased weights to reward recycling
+    { material: 'recycled polyester', weight: 25, category: 'recycled', waterImpact: -12, carbonImpact: -15 },
+    { material: 'recycled cotton', weight: 28, category: 'recycled', waterImpact: -15, carbonImpact: -12 },
+    { material: 'recycled wool', weight: 26, category: 'recycled', waterImpact: -12, carbonImpact: -12 },
+    { material: 'deadstock', weight: 30, category: 'recycled', waterImpact: -18, carbonImpact: -18 },
     
-    // Eco-friendly synthetics
-    { material: 'tencel', weight: 18, category: 'eco-synthetic', waterImpact: -10, carbonImpact: -8 },
-    { material: 'lyocell', weight: 18, category: 'eco-synthetic', waterImpact: -10, carbonImpact: -8 },
-    { material: 'modal', weight: 15, category: 'eco-synthetic', waterImpact: -8, carbonImpact: -6 },
+    // Eco-friendly synthetics - increased weights to encourage better synthetics
+    { material: 'tencel', weight: 25, category: 'eco-synthetic', waterImpact: -15, carbonImpact: -12 },
+    { material: 'lyocell', weight: 25, category: 'eco-synthetic', waterImpact: -15, carbonImpact: -12 },
+    { material: 'modal', weight: 22, category: 'eco-synthetic', waterImpact: -12, carbonImpact: -10 },
     
     // Other sustainable materials
-    { material: 'bamboo', weight: 15, category: 'natural', waterImpact: -5, carbonImpact: -8 },
-    { material: 'cork', weight: 20, category: 'natural', waterImpact: -12, carbonImpact: -10 },
-    { material: 'piñatex', weight: 20, category: 'innovative', waterImpact: -10, carbonImpact: -12 },
-    { material: 'mycelium', weight: 22, category: 'innovative', waterImpact: -15, carbonImpact: -15 }
+    { material: 'bamboo', weight: 25, category: 'natural', waterImpact: -10, carbonImpact: -12 },
+    { material: 'cork', weight: 30, category: 'natural', waterImpact: -15, carbonImpact: -15 },
+    { material: 'piñatex', weight: 30, category: 'innovative', waterImpact: -15, carbonImpact: -15 },
+    { material: 'mycelium', weight: 32, category: 'innovative', waterImpact: -18, carbonImpact: -18 }
 ];
 
 const UNSUSTAINABLE_MATERIALS = [
-    // Highly unsustainable synthetics
-    { material: 'polyester', weight: -25, category: 'synthetic', waterImpact: 20, carbonImpact: 25 },
-    { material: 'nylon', weight: -22, category: 'synthetic', waterImpact: 18, carbonImpact: 22 },
-    { material: 'acrylic', weight: -25, category: 'synthetic', waterImpact: 20, carbonImpact: 25 },
-    { material: 'polyurethane', weight: -25, category: 'synthetic', waterImpact: 22, carbonImpact: 25 },
-    { material: 'pvc', weight: -30, category: 'synthetic', waterImpact: 25, carbonImpact: 30 },
+    // Highly unsustainable synthetics - reduced penalties slightly
+    { material: 'polyester', weight: -20, category: 'synthetic', waterImpact: 15, carbonImpact: 20 },
+    { material: 'nylon', weight: -18, category: 'synthetic', waterImpact: 15, carbonImpact: 18 },
+    { material: 'acrylic', weight: -20, category: 'synthetic', waterImpact: 15, carbonImpact: 20 },
+    { material: 'polyurethane', weight: -20, category: 'synthetic', waterImpact: 18, carbonImpact: 20 },
+    { material: 'pvc', weight: -25, category: 'synthetic', waterImpact: 20, carbonImpact: 25 },
     
-    // Problematic natural materials
-    { material: 'conventional cotton', weight: -15, category: 'natural', waterImpact: 25, carbonImpact: 15 },
-    { material: 'rayon', weight: -18, category: 'semi-synthetic', waterImpact: 20, carbonImpact: 18 },
-    { material: 'viscose', weight: -18, category: 'semi-synthetic', waterImpact: 20, carbonImpact: 18 },
+    // Problematic natural materials - reduced penalties
+    { material: 'conventional cotton', weight: -10, category: 'natural', waterImpact: 20, carbonImpact: 12 },
+    { material: 'rayon', weight: -15, category: 'semi-synthetic', waterImpact: 15, carbonImpact: 15 },
+    { material: 'viscose', weight: -15, category: 'semi-synthetic', waterImpact: 15, carbonImpact: 15 },
     
-    // Blends (usually harder to recycle)
-    { material: 'poly blend', weight: -20, category: 'blend', waterImpact: 15, carbonImpact: 20 },
-    { material: 'synthetic blend', weight: -20, category: 'blend', waterImpact: 15, carbonImpact: 20 },
-    { material: 'spandex', weight: -15, category: 'blend', waterImpact: 12, carbonImpact: 15 },
+    // Blends - reduced penalties since they're common
+    { material: 'poly blend', weight: -15, category: 'blend', waterImpact: 12, carbonImpact: 15 },
+    { material: 'synthetic blend', weight: -15, category: 'blend', waterImpact: 12, carbonImpact: 15 },
+    { material: 'spandex', weight: -10, category: 'blend', waterImpact: 10, carbonImpact: 12 },
     
-    // Generic terms indicating potential issues
-    { material: 'artificial', weight: -15, category: 'unknown', waterImpact: 15, carbonImpact: 15 },
-    { material: 'synthetic', weight: -15, category: 'unknown', waterImpact: 15, carbonImpact: 15 }
+    // Generic terms - reduced penalties
+    { material: 'artificial', weight: -12, category: 'unknown', waterImpact: 12, carbonImpact: 12 },
+    { material: 'synthetic', weight: -12, category: 'unknown', waterImpact: 12, carbonImpact: 12 }
 ];
 
 // Manufacturing practice indicators with weights and categories
@@ -728,12 +728,12 @@ function getDefaultAnalysis(productInfo) {
     return defaultData;
 }
 
-// Enhanced sustainability analysis
+// Enhanced sustainability analysis with adjusted base scores
 function analyzeSustainability(productInfo) {
-    let materialScore = 50; // Base score
-    let manufacturingScore = 40;
-    let carbonScore = 35;
-    let waterScore = 35;
+    let materialScore = 60; // Increased base score
+    let manufacturingScore = 50; // Increased base score
+    let carbonScore = 45; // Increased base score
+    let waterScore = 45; // Increased base score
     
     const materialsLower = productInfo.materials.toLowerCase();
     const materialBreakdown = productInfo.materialBreakdown;
@@ -762,52 +762,54 @@ function analyzeSustainability(productInfo) {
             }
         });
         
-        materialScore = Math.max(0, Math.min(100, 50 + totalScore));
-        waterScore = Math.max(0, Math.min(100, 50 - totalWaterImpact));
-        carbonScore = Math.max(0, Math.min(100, 50 - totalCarbonImpact));
+        // Adjusted score calculations with more lenient scaling
+        materialScore = Math.max(20, Math.min(100, 60 + totalScore));
+        waterScore = Math.max(20, Math.min(100, 60 - totalWaterImpact));
+        carbonScore = Math.max(20, Math.min(100, 60 - totalCarbonImpact));
     } else {
-        // Fallback to text analysis if no percentage breakdown
+        // More lenient fallback scoring
         SUSTAINABLE_MATERIALS.forEach(item => {
             if (materialsLower.includes(item.material)) {
-                materialScore += item.weight / 2;
-                waterScore -= item.waterImpact;
-                carbonScore -= item.carbonImpact;
+                materialScore += item.weight / 3;
+                waterScore -= item.waterImpact / 2;
+                carbonScore -= item.carbonImpact / 2;
             }
         });
 
         UNSUSTAINABLE_MATERIALS.forEach(item => {
             if (materialsLower.includes(item.material)) {
-                materialScore += item.weight / 2;
-                waterScore += item.waterImpact;
-                carbonScore += item.carbonImpact;
+                materialScore += item.weight / 3;
+                waterScore += item.waterImpact / 2;
+                carbonScore += item.carbonImpact / 2;
             }
         });
     }
 
-    // Analyze manufacturing practices
+    // More lenient manufacturing scoring
     MANUFACTURING_INDICATORS.forEach(item => {
         if (materialsLower.includes(item.indicator) || 
             productInfo.description.toLowerCase().includes(item.indicator)) {
-            manufacturingScore += item.weight / 2;
-            carbonScore -= 5;
-            waterScore -= 5;
+            manufacturingScore += item.weight / 1.5; // Increased impact of positive indicators
+            carbonScore -= 3;
+            waterScore -= 3;
         }
     });
 
-    // Normalize scores
-    materialScore = Math.max(0, Math.min(100, materialScore));
-    manufacturingScore = Math.max(0, Math.min(100, manufacturingScore));
-    carbonScore = Math.max(0, Math.min(100, carbonScore));
-    waterScore = Math.max(0, Math.min(100, waterScore));
+    // Normalize scores with higher minimum values
+    materialScore = Math.max(20, Math.min(100, materialScore));
+    manufacturingScore = Math.max(25, Math.min(100, manufacturingScore));
+    carbonScore = Math.max(20, Math.min(100, carbonScore));
+    waterScore = Math.max(20, Math.min(100, waterScore));
 
-    // Generate detailed explanations with productInfo
+    // Generate detailed explanations
     const materialExplanation = getMaterialExplanation(materialScore, materialBreakdown, productInfo);
     const manufacturingExplanation = getManufacturingExplanation(manufacturingScore, productInfo);
     const carbonExplanation = getCarbonExplanation(carbonScore, materialBreakdown, productInfo);
     const waterExplanation = getWaterExplanation(waterScore, materialBreakdown, productInfo);
 
+    // Adjusted final score calculation with more weight on positive aspects
     return {
-        score: Math.round((materialScore * 0.35) + (manufacturingScore * 0.30) + 
+        score: Math.round((materialScore * 0.40) + (manufacturingScore * 0.25) + 
                (carbonScore * 0.20) + (waterScore * 0.15)),
         materials: Math.round(materialScore),
         manufacturing: Math.round(manufacturingScore),
@@ -823,7 +825,7 @@ function analyzeSustainability(productInfo) {
     };
 }
 
-// Enhanced explanation generators
+// Adjusted explanation thresholds
 function getMaterialExplanation(score, materialBreakdown, productInfo) {
     // First check material breakdown from composition
     if (materialBreakdown.length > 0) {
@@ -833,17 +835,17 @@ function getMaterialExplanation(score, materialBreakdown, productInfo) {
         const unsustainableMaterials = materialBreakdown.filter(({ material }) => 
             UNSUSTAINABLE_MATERIALS.some(m => material.includes(m.material)));
         
-        // Calculate total percentages
+        // Calculate total percentages with more lenient thresholds
         const sustainablePercentage = sustainableMaterials.reduce((sum, { percentage }) => sum + percentage, 0);
         const unsustainablePercentage = unsustainableMaterials.reduce((sum, { percentage }) => sum + percentage, 0);
         
         if (sustainablePercentage > 0 || unsustainablePercentage > 0) {
-            if (sustainablePercentage > unsustainablePercentage) {
+            if (sustainablePercentage >= unsustainablePercentage * 0.8) { // More lenient comparison
                 const mainMaterial = sustainableMaterials[0];
-                return `Contains ${sustainablePercentage}% sustainable materials, primarily ${mainMaterial.percentage}% ${mainMaterial.material}`;
+                return `Contains ${sustainablePercentage}% eco-friendly materials, featuring ${mainMaterial.percentage}% ${mainMaterial.material}`;
             } else {
                 const mainMaterial = unsustainableMaterials[0];
-                return `Contains ${unsustainablePercentage}% less sustainable materials, including ${mainMaterial.percentage}% ${mainMaterial.material}`;
+                return `Contains ${unsustainablePercentage}% conventional materials, including ${mainMaterial.percentage}% ${mainMaterial.material}`;
             }
         }
     }
@@ -878,6 +880,7 @@ function getMaterialExplanation(score, materialBreakdown, productInfo) {
     }
 }
 
+// Adjusted manufacturing explanation thresholds
 function getManufacturingExplanation(score, productInfo) {
     const combinedText = `${productInfo.title} ${productInfo.description} ${productInfo.materials}`.toLowerCase();
     
@@ -892,25 +895,25 @@ function getManufacturingExplanation(score, productInfo) {
     if (certifications.length > 0) {
         const mainCert = certifications[0].indicator.toUpperCase();
         if (productionMethods.length > 0) {
-            return `${mainCert} certified with ${productionMethods[0].indicator} production methods`;
+            return `${mainCert} certified with eco-friendly ${productionMethods[0].indicator} production`;
         }
-        return `Certified with ${mainCert}, indicating responsible manufacturing practices`;
+        return `${mainCert} certified, indicating commitment to responsible practices`;
     }
     
     if (productionMethods.length > 0) {
-        return `Uses ${productionMethods.map(m => m.indicator).join(' and ')} in production`;
+        return `Utilizes ${productionMethods.map(m => m.indicator).join(' and ')} in production`;
     }
     
-    // Platform-specific default explanations
+    // More nuanced platform-specific explanations
     switch (productInfo.platform) {
         case 'amazon':
-            return `Standard manufacturing processes typical for ${productInfo.title.split(' ')[0]} products on Amazon`;
+            return `Standard production methods for ${productInfo.title.split(' ')[0]} items on Amazon`;
         case 'hm':
-            return `Uses H&M's standard fast-fashion production methods for ${productInfo.title.split(' ')[0]} items`;
+            return `Uses H&M's regular production methods for ${productInfo.title.split(' ')[0]} items`;
         case 'zara':
-            return `Manufactured using Zara's typical production processes for ${productInfo.title.split(' ')[0]} items`;
+            return `Standard Zara production process for ${productInfo.title.split(' ')[0]} items`;
         default:
-            return 'Manufacturing information not available';
+            return 'Standard production methods used';
     }
 }
 
