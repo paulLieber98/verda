@@ -1,7 +1,5 @@
 # Verda - Sustainable Shopping Assistant
 
-A Chrome extension submission for the MCA Eagles' CodeNest 2025 Hackathon.
-
 ## About
 
 Verda helps you make sustainable shopping choices by analyzing clothing items on popular e-commerce sites (for now, only: Amazon, H&M, and Zara). --> provides real time sustainability evaluationscores and detailed insights+explanations about materials, manufacturing processes, etc...
@@ -38,10 +36,7 @@ chrome://extensions/
 
 - Paul Lieber
 
-
-## Hackathon Project
-
-This project was created for the CodeNest Hackathon with the theme of sustainability. 
+- 
 
 ## Future Work
 
