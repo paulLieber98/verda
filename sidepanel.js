@@ -3,28 +3,93 @@ document.addEventListener('DOMContentLoaded', function() {
     const loadingElement = document.getElementById('loading');
     const noProductElement = document.getElementById('no-product');
     const contentElement = document.getElementById('content');
-    const scoreElement = document.getElementById('score');
     const productTitleElement = document.getElementById('product-title');
-    const debugInfo = document.getElementById('debug-info');
-    const statusText = document.getElementById('status-text');
-    const lastUpdate = document.getElementById('last-update');
-    const loadingStep = document.getElementById('loading-step');
-
-    // Enable debug info in development
-    debugInfo.style.display = 'none';  // Hide debug info by default
+    const scoreElement = document.getElementById('score');
+    const statusElement = document.getElementById('status-text');
+    const lastUpdateElement = document.getElementById('last-update');
 
     let hasReceivedData = false;
     let loadingTimeout = null;
+    let port = null;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
-    function updateLoadingStep(step) {
-        if (loadingStep) {
-            loadingStep.textContent = step;
+    function updateStatus(status) {
+        if (statusElement) {
+            statusElement.textContent = status;
+            lastUpdateElement.textContent = new Date().toLocaleTimeString();
         }
     }
 
-    function updateStatus(status) {
-        statusText.textContent = status;
-        lastUpdate.textContent = new Date().toLocaleTimeString();
+    function updateLoadingStep(step) {
+        const loadingStepElement = document.getElementById('loading-step');
+        if (loadingStepElement) {
+            loadingStepElement.textContent = step;
+        }
+    }
+
+    // Function to establish connection with background script
+    function connectToBackground() {
+        try {
+            port = chrome.runtime.connect({ name: 'sidepanel-connection' });
+            console.log('Connected to background script');
+            
+            port.onMessage.addListener(handleMessage);
+            
+            port.onDisconnect.addListener(() => {
+                console.log('Disconnected from background script');
+                port = null;
+                if (retryCount < MAX_RETRIES) {
+                    retryCount++;
+                    console.log(`Retrying connection (${retryCount}/${MAX_RETRIES})...`);
+                    setTimeout(connectToBackground, 1000);
+                } else {
+                    console.error('Max retries reached, showing error state');
+                    showNoProduct();
+                    updateStatus('Connection failed - please refresh the page');
+                }
+            });
+
+            // Reset retry count on successful connection
+            retryCount = 0;
+            
+            // Request initial analysis
+            requestAnalysis();
+        } catch (error) {
+            console.error('Error connecting to background:', error);
+            if (retryCount < MAX_RETRIES) {
+                retryCount++;
+                setTimeout(connectToBackground, 1000);
+            }
+        }
+    }
+
+    // Function to handle incoming messages
+    function handleMessage(message) {
+        console.log('Received message:', message);
+        
+        switch (message.type) {
+            case 'PRODUCT_DATA':
+                clearTimeout(loadingTimeout);
+                if (message.error) {
+                    console.error('Analysis error:', message.error);
+                    updateStatus('Error: ' + message.error);
+                    showNoProduct();
+                } else if (message.data) {
+                    hasReceivedData = true;
+                    updateSustainabilityInfo(message.data);
+                } else {
+                    showNoProduct();
+                }
+                break;
+            case 'ANALYSIS_STEP':
+                updateLoadingStep(message.step);
+                break;
+            case 'UNSUPPORTED_SITE':
+                showNoProduct();
+                updateStatus('Unsupported website');
+                break;
+        }
     }
 
     // Function to update the sustainability score and factors
@@ -45,6 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Update main score
         scoreElement.textContent = Math.round(data.score);
+        updateScoreColors(); // Update color coding
 
         // Update factor scores and progress bars
         updateFactor('materials', data.materials, data.explanations.materials);
@@ -70,30 +136,29 @@ document.addEventListener('DOMContentLoaded', function() {
         if (scoreElement && progressElement) {
             const roundedScore = Math.round(score);
             scoreElement.textContent = roundedScore;
+            scoreElement.setAttribute('data-score', getScoreCategory(roundedScore));
             
             // Animate the progress bar
             progressElement.style.transition = 'width 0.5s ease-out';
             progressElement.style.width = '0%';
             
-            // Use requestAnimationFrame for smooth animation
             requestAnimationFrame(() => {
                 progressElement.style.width = `${roundedScore}%`;
-                
-                // Update color based on score
-                if (roundedScore >= 80) {
-                    progressElement.style.backgroundColor = '#2ecc71'; // Green
-                } else if (roundedScore >= 60) {
-                    progressElement.style.backgroundColor = '#f1c40f'; // Yellow
-                } else {
-                    progressElement.style.backgroundColor = '#e74c3c'; // Red
-                }
+                progressElement.setAttribute('data-score', getScoreCategory(roundedScore));
             });
 
             // Update explanation if available
             if (explanationElement && explanation) {
                 explanationElement.textContent = explanation;
+                explanationElement.setAttribute('data-score', getScoreCategory(roundedScore));
             }
         }
+    }
+
+    function getScoreCategory(score) {
+        if (score >= 70) return 'good';
+        if (score >= 40) return 'moderate';
+        return 'bad';
     }
 
     // Function to show loading state
@@ -112,26 +177,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateStatus('Loading timed out');
             }
         }, 30000); // 30 second timeout
-
-        // Update loading steps
-        let stepIndex = 0;
-        const loadingSteps = [
-            'Gathering product information...',
-            'Analyzing materials...',
-            'Evaluating manufacturing process...',
-            'Calculating environmental impact...',
-            'Generating sustainability score...'
-        ];
-
-        // Cycle through loading steps
-        const stepInterval = setInterval(() => {
-            if (!hasReceivedData) {
-                stepIndex = (stepIndex + 1) % loadingSteps.length;
-                updateLoadingStep(loadingSteps[stepIndex]);
-            } else {
-                clearInterval(stepInterval);
-            }
-        }, 3000);
     }
 
     // Function to show no product state
@@ -150,27 +195,7 @@ document.addEventListener('DOMContentLoaded', function() {
         contentElement.style.display = 'block';
     }
 
-    // Listen for messages from the content script and background script
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        console.log('Received message:', message);
-        
-        switch (message.type) {
-            case 'PRODUCT_DATA':
-                updateSustainabilityInfo(message.data);
-                break;
-            case 'UNSUPPORTED_SITE':
-                hasReceivedData = true;
-                clearTimeout(loadingTimeout);
-                updateStatus('Unsupported website');
-                showNoProduct();
-                break;
-            case 'ANALYSIS_STEP':
-                updateLoadingStep(message.step);
-                break;
-        }
-    });
-
-    // Function to request analysis from content script
+    // Function to request analysis from background script
     async function requestAnalysis() {
         updateStatus('Requesting analysis...');
         showLoading();
@@ -185,14 +210,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            // Send message to content script
-            chrome.tabs.sendMessage(tab.id, { type: 'ANALYZE_PAGE' }, (response) => {
-                if (chrome.runtime.lastError) {
-                    console.error(chrome.runtime.lastError);
-                    updateStatus('Error: ' + chrome.runtime.lastError.message);
-                    showNoProduct();
-                }
-            });
+            // Send analysis request through port
+            if (port) {
+                port.postMessage({ 
+                    type: 'REQUEST_ANALYSIS',
+                    tabId: tab.id
+                });
+                
+                // Set a timeout to show no-product state if loading takes too long
+                clearTimeout(loadingTimeout);
+                loadingTimeout = setTimeout(() => {
+                    if (!hasReceivedData) {
+                        showNoProduct();
+                        updateStatus('Analysis timed out - please try again');
+                    }
+                }, 15000); // 15 second timeout
+            } else {
+                throw new Error('No connection to background script');
+            }
         } catch (error) {
             console.error('Error requesting analysis:', error);
             updateStatus('Error: ' + error.message);
@@ -200,18 +235,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Initial request
-    requestAnalysis();
+    // Establish initial connection
+    connectToBackground();
 
     // Set up automatic refresh on tab updates
     chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         if (changeInfo.status === 'complete') {
             requestAnalysis();
         }
-    });
-
-    // Set up automatic refresh on tab activation
-    chrome.tabs.onActivated.addListener(() => {
-        requestAnalysis();
     });
 }); 

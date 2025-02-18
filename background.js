@@ -1,45 +1,114 @@
+// Function to check if URL is accessible
+function isAccessibleUrl(url) {
+    return url && !url.startsWith('chrome://') && !url.startsWith('chrome-extension://') && !url.startsWith('edge://');
+}
+
 // Function to inject and run the content script
 async function injectContentScript(tabId) {
     try {
+        const tab = await chrome.tabs.get(tabId);
+        if (!isAccessibleUrl(tab.url)) {
+            console.log('Skipping injection for restricted URL:', tab.url);
+            return false;
+        }
+
         await chrome.scripting.executeScript({
             target: { tabId },
             files: ['content.js']
         });
         console.log('Content script injected successfully');
+        return true;
     } catch (error) {
         console.error('Failed to inject content script:', error);
+        return false;
     }
 }
 
 // Function to analyze the current tab
 async function analyzeCurrentTab(tabId) {
     try {
-        await chrome.tabs.sendMessage(tabId, { type: 'ANALYZE_PAGE' });
-        console.log('Analysis request sent to tab:', tabId);
-    } catch (error) {
-        console.error('Error sending analysis request:', error);
-        // If the content script isn't ready, inject it and try again
-        await injectContentScript(tabId);
-        try {
-            await chrome.tabs.sendMessage(tabId, { type: 'ANALYZE_PAGE' });
-        } catch (retryError) {
-            console.error('Retry failed:', retryError);
+        const tab = await chrome.tabs.get(tabId);
+        if (!isAccessibleUrl(tab.url)) {
+            console.log('Skipping analysis for restricted URL:', tab.url);
+            notifyAllPorts({
+                type: 'PRODUCT_DATA',
+                data: null,
+                error: 'Cannot analyze this page type'
+            });
+            return;
         }
+
+        // First try to inject the content script
+        await injectContentScript(tabId);
+        
+        // Then send the analysis request
+        try {
+            await chrome.tabs.sendMessage(tabId, { 
+                type: 'ANALYZE_PAGE',
+                tabId: tabId
+            });
+            console.log('Analysis request sent to tab:', tabId);
+        } catch (error) {
+            console.error('Error sending analysis request:', error);
+            notifyAllPorts({
+                type: 'PRODUCT_DATA',
+                data: null,
+                error: 'Failed to analyze page'
+            });
+        }
+    } catch (error) {
+        console.error('Error in analyzeCurrentTab:', error);
+        notifyAllPorts({
+            type: 'PRODUCT_DATA',
+            data: null,
+            error: error.message
+        });
     }
 }
 
-// Store for sustainability explanations
-let sustainabilityExplanations = {};
+// Store active ports
+let activePorts = new Set();
+
+// Function to notify all active ports
+function notifyAllPorts(message) {
+    activePorts.forEach(port => {
+        try {
+            port.postMessage(message);
+        } catch (error) {
+            console.error('Error sending message to port:', error);
+            activePorts.delete(port);
+        }
+    });
+}
 
 // Handle extension icon click
 chrome.action.onClicked.addListener(async (tab) => {
     console.log('Extension icon clicked');
     
-    // Open the side panel
-    await chrome.sidePanel.open({ windowId: tab.windowId });
-    
-    // Analyze the current tab
-    await analyzeCurrentTab(tab.id);
+    try {
+        // Open the side panel
+        await chrome.sidePanel.open({ windowId: tab.windowId });
+        
+        if (!isAccessibleUrl(tab.url)) {
+            console.log('Skipping analysis for restricted URL:', tab.url);
+            notifyAllPorts({
+                type: 'PRODUCT_DATA',
+                data: null,
+                error: 'Cannot analyze this page type'
+            });
+            return;
+        }
+
+        // Always analyze the current tab when icon is clicked
+        await analyzeCurrentTab(tab.id);
+    } catch (error) {
+        console.error('Error in extension initialization:', error);
+        notifyAllPorts({
+            type: 'PRODUCT_DATA',
+            data: null,
+            error: error.message
+        });
+    }
 });
 
 // Set up initial state when extension is installed or updated
@@ -54,14 +123,40 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === 'STORE_EXPLANATIONS') {
-        // Store explanations for the current tab
-        sustainabilityExplanations[sender.tab.id] = message.data;
-    } else if (message.type === 'GET_EXPLANATIONS') {
-        // Return explanations for the requesting tab
-        sendResponse(sustainabilityExplanations[sender.tab.id] || null);
+    console.log('Background received message:', message.type);
+    
+    if (message.type === 'PRODUCT_DATA' || message.type === 'ANALYSIS_STEP') {
+        notifyAllPorts(message);
     }
+
+    // Always send a response
+    sendResponse({ received: true });
     return true;
+});
+
+// Handle port connections
+chrome.runtime.onConnect.addListener((port) => {
+    console.log('New connection established:', port.name);
+    activePorts.add(port);
+    
+    port.onDisconnect.addListener(() => {
+        console.log('Connection disconnected:', port.name);
+        activePorts.delete(port);
+        if (chrome.runtime.lastError) {
+            console.error('Connection error:', chrome.runtime.lastError);
+        }
+    });
+
+    // Listen for messages from the port
+    port.onMessage.addListener((message) => {
+        console.log('Received port message:', message);
+        if (message.type === 'REQUEST_ANALYSIS') {
+            const tabId = message.tabId;
+            if (tabId) {
+                analyzeCurrentTab(tabId);
+            }
+        }
+    });
 });
 
 // Listen for tab updates

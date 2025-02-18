@@ -39,5 +39,11 @@
       "js": ["content.js"],
       "run_at": "document_end"
     }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["verdalogo.png"],
+      "matches": ["<all_urls>"]
+    }
   ]
 } 

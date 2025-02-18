@@ -458,9 +458,9 @@
             </p>
         </div>
         <div class="store-list">
-            <a href="https://www.amazon.com" target="_blank" class="store-item" style="text-decoration: none; color: inherit; cursor: pointer;">Amazon</a>
-            <a href="https://www2.hm.com" target="_blank" class="store-item" style="text-decoration: none; color: inherit; cursor: pointer;">H&M</a>
-            <a href="https://www.zara.com" target="_blank" class="store-item" style="text-decoration: none; color: inherit; cursor: pointer;">Zara</a>
+            <a href="https://www.amazon.com" target="_blank" class="store-item">Amazon</a>
+            <a href="https://www2.hm.com" target="_blank" class="store-item">H&M</a>
+            <a href="https://www.zara.com" target="_blank" class="store-item">Zara</a>
         </div>
     </div>
 
@@ -540,31 +540,6 @@
     </div>
 
     <script src="sidepanel.js"></script>
-    <script>
-        // Add this script to handle dynamic color coding
-        function updateScoreColors() {
-            const elements = document.querySelectorAll('[data-score]');
-            elements.forEach(element => {
-                const score = parseInt(element.textContent);
-                if (score <= 40) {
-                    element.setAttribute('data-score', 'bad');
-                } else if (score <= 70) {
-                    element.setAttribute('data-score', 'moderate');
-                } else {
-                    element.setAttribute('data-score', 'good');
-                }
-            });
-        }
-
-        // Call this function whenever scores are updated
-        document.addEventListener('DOMContentLoaded', () => {
-            const observer = new MutationObserver(updateScoreColors);
-            observer.observe(document.body, { 
-                subtree: true, 
-                characterData: true, 
-                childList: true 
-            });
-        });
-    </script>
+    <script src="ui-utils.js"></script>
 </body>
 </html> 
